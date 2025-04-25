@@ -1,0 +1,7 @@
+export const TRANSACTION_MICROSERVICE_API = 'TRANSACTION_MICROSERVICE_API';
+export const TRANSACTION_MICROSERVICE_TCP = 'TRANSACTION_MICROSERVICE_TCP';
+
+export const TCP_RESPONSE_STATUS = {
+  succes: 'success',
+  failed: 'failed',
+};

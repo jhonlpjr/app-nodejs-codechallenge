@@ -1,0 +1,14 @@
+import { ENVIRONMENTS } from '../enums/environments.enum';
+
+export const configuration: any = () => {
+  return {
+    MS_AUTH_API: process.env[ENVIRONMENTS.VARIABLES.MS_AUTH_API],
+    MS_TRANSACTION_API: process.env[ENVIRONMENTS.VARIABLES.MS_TRANSACTION_API],
+    MS_TRANSACTION_KAFKA:
+      process.env[ENVIRONMENTS.VARIABLES.MS_TRANSACTION_KAFKA],
+    MS_TRANSACTION_TCP_HOST:
+      process.env[ENVIRONMENTS.VARIABLES.MS_TRANSACTION_TCP_HOST],
+    MS_TRANSACTION_TCP_PORT:
+      process.env[ENVIRONMENTS.VARIABLES.MS_TRANSACTION_TCP_PORT],
+  };
+};

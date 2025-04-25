@@ -1,5 +1,12 @@
 # Yape Code Challenge :rocket:
 
+> ⚠️ **CAUTION:**  
+> **Please read the [`INSTRUCTIONS.md`](./INSTRUCTIONS.md)** carefully before executing or deploying the project.  
+> It contains critical setup steps and environment configurations.  
+>   
+> **By: Jonathan Reyna**
+
+
 Our code challenge will let you marvel us with your Jedi coding skills :smile:. 
 
 Don't forget that the proper way to submit your work is to fork the repo and create a PR :wink: ... have fun !!

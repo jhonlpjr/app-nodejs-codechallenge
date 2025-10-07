@@ -1,25 +1,145 @@
-version: "3.7"
+version: '3.8'
+
 services:
   postgres:
-    image: postgres:14
+    image: postgres:16
+    container_name: postgres
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 123456
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/dump-yape-test.sql:/docker-entrypoint-initdb.d/dump-yape-test.sql
+    networks:
+      - backend
+
   zookeeper:
-    image: confluentinc/cp-zookeeper:5.5.3
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - kafka-net
+
   kafka:
-    image: confluentinc/cp-enterprise-kafka:5.5.3
-    depends_on: [zookeeper]
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
-      KAFKA_BROKER_ID: 1
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_JMX_PORT: 9991
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
     ports:
-      - 9092:9092
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
+      KAFKA_LISTENERS: INSIDE://0.0.0.0:9092,OUTSIDE://0.0.0.0:9093
+      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: true
+    depends_on:
+      - zookeeper
+    networks:
+      - kafka-net
+
+  api-gateway:
+    image: node:20
+    container_name: api-gateway
+    working_dir: /app
+    volumes:
+      - ./api-gateway-yape:/app
+    command: sh -c "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npm run start:dev"
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MS_AUTH_API=http://auth:3001/api/v1
+      - MS_TRANSACTION_API=http://transaction:3003/api/v1
+      - MS_TRANSACTION_TCP_HOST=transaction
+      - MS_TRANSACTION_TCP_PORT=3005
+      - MS_TRANSACTION_KAFKA=kafka:9092
+    depends_on:
+      - transaction
+      - auth
+    networks:
+      - backend
+      - kafka-net
+
+  transaction:
+    image: node:20
+    container_name: ms-transaction
+    working_dir: /app
+    volumes:
+      - ./ms-transaction:/app
+    command: sh -c "npm install --legacy-peer-deps && npm run start:dev"
+    ports:
+      - "3003:3003"
+      - "3005:3005"
+    environment:
+      - PORT=3003
+      - TCP_HOST=transaction
+      - TCP_PORT=3005
+      - BD_HOST=postgres
+      - BD_PORT=5432
+      - BD_NAME=yape_test
+      - BD_USERNAME=admin
+      - BD_PASSWORD=123456
+      - AUTH_SERVICE_URL=http://auth:3001/api/v1
+      - KAFKA_BROKER=kafka:9092
+    depends_on:
+      - kafka
+      - postgres
+    networks:
+      - backend
+      - kafka-net
+
+  anti-fraud:
+    image: node:20
+    container_name: ms-anti-fraud
+    working_dir: /app
+    volumes:
+      - ./ms-anti-fraud:/app
+    command: sh -c "npm install && npm run start"
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - KAFKA_BROKER=kafka:9092
+      - AUTH_SERVICE_URL=http://auth:3001/api/v1/verificate-secret-key
+    depends_on:
+      - kafka
+    networks:
+      - backend
+      - kafka-net
+
+  auth:
+    image: node:20
+    container_name: ms-auth
+    working_dir: /app
+    volumes:
+      - ./ms-auth:/app
+    command: sh -c "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps && npm run start"
+    ports:
+      - "3001:3001"
+    environment:
+      - JWT_SECRET=mysecret
+      - PG_HOST=postgres
+      - PG_DATABASE=yape_test
+      - PG_PORT=5432
+      - PG_USER=admin
+      - PG_PASSWORD=123456
+      - PORT=3001
+    networks:
+      - backend
+
+volumes:
+  postgres-data:
+
+networks:
+  backend:
+  kafka-net:
+    driver: bridge

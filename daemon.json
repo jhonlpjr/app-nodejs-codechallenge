@@ -1,0 +1,7 @@
+{
+  "registry-mirrors": [
+    "https://mirror.gcr.io",
+    "https://docker.mirrors.ustc.edu.cn"
+  ],
+  "dns": ["8.8.8.8", "8.8.4.4"]
+}
